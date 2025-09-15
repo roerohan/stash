@@ -161,6 +161,7 @@ v1.post('/search', async (c) => {
   }
 
   const vectorMatches = await c.env.VECTORIZE.query(queryVector, { topK: 10 });
+  console.log('Vectorize matches:', JSON.stringify(vectorMatches, null, 2));
   const pasteIds = vectorMatches.matches.map((m: any) => m.id.replace('paste:', ''));
 
   if (pasteIds.length === 0) {
@@ -178,6 +179,24 @@ v1.post('/search', async (c) => {
   const allowedPastes = pastes.filter(p => !p.owner_email || p.owner_email === userEmail);
 
   return c.json(allowedPastes);
+});
+
+// Temporary endpoint to re-index all pastes
+v1.post('/reindex-all', async (c) => {
+  const pasteStorage = getPasteStorage(c);
+  const response = await pasteStorage.fetch('http://do/list-all');
+  if (!response.ok) {
+    return c.json({ error: 'Failed to fetch pastes from Durable Object' }, 500);
+  }
+  const pastes = await response.json<Paste[]>();
+
+  const vectorizationPromises = pastes.map(paste => vectorizePaste(c.env, paste));
+  c.executionCtx.waitUntil(Promise.all(vectorizationPromises));
+
+  return c.json({
+    message: `Re-indexing started for ${pastes.length} pastes. This will happen in the background.`,
+    count: pastes.length,
+  });
 });
 
 app.route('/v1', v1);
@@ -217,22 +236,26 @@ export { PasteStorage };
 
 // Helper to vectorize a paste
 async function vectorizePaste(env: Env, paste: Paste) {
-  const text = `Title: ${paste.title}\nContent: ${paste.content}`;
-  const { data } = await env.AI.run('@cf/baai/bge-base-en-v1.5', { text: [text] });
-  const vector = data[0];
+  try {
+    const text = `Title: ${paste.title}\nContent: ${paste.content}`;
+    const { data } = await env.AI.run('@cf/baai/bge-base-en-v1.5', { text: [text] });
+    const vector = data[0];
 
-  if (vector) {
-    await env.VECTORIZE.upsert([
-      {
-        id: `paste:${paste.id}`,
-        values: vector,
-        metadata: {
-          // Vectorize metadata values cannot be null.
-          ...(paste.owner_email && { owner: paste.owner_email }),
-          ...(paste.title && { title: paste.title }),
-          ...(paste.language && { language: paste.language }),
+    if (vector) {
+      await env.VECTORIZE.upsert([
+        {
+          id: `paste:${paste.id}`,
+          values: vector,
+          metadata: {
+            // Vectorize metadata values cannot be null.
+            ...(paste.owner_email && { owner: paste.owner_email }),
+            ...(paste.title && { title: paste.title }),
+            ...(paste.language && { language: paste.language }),
+          },
         },
-      },
-    ]);
+      ]);
+    }
+  } catch (error) {
+    console.error(`Failed to vectorize paste ${paste.id}:`, error);
   }
 }

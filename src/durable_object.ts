@@ -85,6 +85,12 @@ export class PasteStorage {
                 return new Response(JSON.stringify(pastes), { headers: { 'Content-Type': 'application/json' } });
             }
             break;
+        case 'list-all':
+            if (method === 'GET') {
+                const pastes = await this.listAllPastes();
+                return new Response(JSON.stringify(pastes), { headers: { 'Content-Type': 'application/json' } });
+            }
+            break;
       }
       return new Response('Not found', { status: 404 });
     } catch (error: any) {
@@ -154,6 +160,12 @@ export class PasteStorage {
       const publicPastes = (await this.state.storage.get<string[]>('public_pastes')) || [];
       await this.state.storage.put('public_pastes', publicPastes.filter(pId => pId !== id));
     }
+  }
+
+  // List all pastes
+  private async listAllPastes(): Promise<Paste[]> {
+    const allItems = await this.state.storage.list<Paste>({ prefix: 'paste:' });
+    return Array.from(allItems.values());
   }
 
   // List pastes for a specific user

@@ -5,7 +5,7 @@
   "scripts": {
     "deploy": "wrangler deploy --minify",
     "dev": "concurrently --kill-others \"npm:dev:worker\" \"npm:dev:frontend\"",
-    "dev:worker": "wrangler dev --port 8788",
+    "dev:worker": "wrangler dev --port 8788 --experimental-vectorize-bind-to-prod",
     "dev:frontend": "npm run dev --prefix src/frontend",
     "build:frontend": "cd src/frontend && npm run build",
     "build": "npm run build:frontend",
