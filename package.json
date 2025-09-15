@@ -1,0 +1,26 @@
+{
+  "name": "stash",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy --minify",
+    "dev": "concurrently --kill-others \"npm:dev:worker\" \"npm:dev:frontend\"",
+    "dev:worker": "wrangler dev --port 8788",
+    "dev:frontend": "npm run dev --prefix src/frontend",
+    "build:frontend": "cd src/frontend && npm run build",
+    "build": "npm run build:frontend",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.2.2",
+    "hono": "^4.4.12",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240725.0",
+    "concurrently": "^9.2.1",
+    "typescript": "^5.5.3",
+    "vitest": "^2.0.2",
+    "wrangler": "^4.0.0"
+  }
+}
