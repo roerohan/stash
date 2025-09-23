@@ -21,3 +21,6 @@ index_name = "stash-embeddings"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["PasteStorage"]
+
+[dev.vars]
+ENVIRONMENT = "development"

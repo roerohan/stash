@@ -22,18 +22,18 @@ const Search = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-white">Search Pastes</h1>
-      <form onSubmit={handleSearch} className="flex items-center space-x-2 mb-8">
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-center sm:space-x-2 mb-8">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="flex-grow bg-gray-800 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          className="w-full sm:flex-grow bg-gray-800 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm mb-2 sm:mb-0"
           placeholder="Enter your search query..."
         />
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
+          className="w-full sm:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
         >
           {mutation.isPending ? 'Searching...' : 'Search'}
         </button>

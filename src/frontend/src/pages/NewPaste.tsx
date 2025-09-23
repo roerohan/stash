@@ -3,6 +3,10 @@ import { useMutation } from '@tanstack/react-query';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import Editor from 'react-simple-code-editor';
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github-dark.css';
+import { languages, getLanguage } from '../lib/languages';
 
 const createPaste = async (data: { title: string; content: string; language: string }) => {
   const { data: response } = await axios.post('/v1/paste', data);
@@ -48,26 +52,42 @@ const NewPaste = () => {
         </div>
         <div>
           <label htmlFor="language" className="block text-sm font-medium text-gray-300">Language</label>
-          <input
-            type="text"
+          <select
             id="language"
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
             className="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            placeholder="e.g., javascript, python, plaintext"
-          />
+          >
+            {languages.map(lang => (
+              <option key={lang.value} value={lang.value}>
+                {lang.label}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label htmlFor="content" className="block text-sm font-medium text-gray-300">Content</label>
-          <textarea
-            id="content"
-            rows={20}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono"
-            required
-            placeholder="Paste your content here..."
-          />
+          <div className="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono">
+            <Editor
+              value={content}
+              onValueChange={code => setContent(code)}
+              highlight={code => {
+                const lang = getLanguage(language);
+                if (lang && hljs.getLanguage(lang.value)) {
+                  return hljs.highlight(code, { language: lang.value }).value;
+                }
+                return hljs.highlightAuto(code).value;
+              }}
+              padding={10}
+              style={{
+                fontFamily: '"Fira Code", "Fira Mono", monospace',
+                fontSize: 14,
+              }}
+              placeholder="Paste your content here..."
+              required
+              className="min-h-[400px]"
+            />
+          </div>
         </div>
         <div>
           <button

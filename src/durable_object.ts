@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const pasteSchema = z.object({
   id: z.string().uuid(),
   owner_email: z.string().email().nullable(),
-  title: z.string().min(1, 'Title cannot be empty'),
+  title: z.string().optional().default('Untitled'),
   content: z.string().min(1, 'Content cannot be empty'),
   language: z.string().nullable(),
   created_at: z.number(),
@@ -19,6 +19,7 @@ export interface Env {
   VECTORIZE: VectorizeIndex;
   AI: any;
   ASSETS?: Fetcher;
+  ENVIRONMENT?: 'development' | 'production';
 }
 
 // The PasteStorage Durable Object class

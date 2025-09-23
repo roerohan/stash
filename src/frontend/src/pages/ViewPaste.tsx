@@ -35,8 +35,8 @@ const ViewPaste = () => {
         <div className="text-sm text-gray-400 mb-4">
             Language: {paste.language || 'plaintext'} | Posted: {new Date(paste.created_at).toLocaleString()}
         </div>
-        <div className="bg-gray-800 rounded-lg overflow-hidden">
-            <pre><code ref={codeRef} className={`language-${paste.language}`}>
+        <div className="bg-gray-800 rounded-lg overflow-x-auto">
+            <pre className="p-4"><code ref={codeRef} className={`language-${paste.language}`}>
                 {paste.content}
             </code></pre>
         </div>

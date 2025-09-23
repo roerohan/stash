@@ -23,7 +23,14 @@ function getPasteStorage(c: Context<App>): DurableObjectStub {
 
 // Middleware to get user email
 app.use('/v1/*', async (c, next) => {
-  const userEmail = c.req.header('cf-access-authenticated-user-email') ?? null;
+  let userEmail = c.req.header('cf-access-authenticated-user-email') ?? null;
+
+  // For local development, if the header is not present, we can use a mock email.
+  const isDevelopment = c.env.ENVIRONMENT === 'development';
+  if (isDevelopment && !userEmail) {
+    userEmail = 'dev-user@example.com'; // Mock user for local development
+  }
+
   c.set('userEmail', userEmail);
   await next();
 });
