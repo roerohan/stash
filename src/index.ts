@@ -168,8 +168,13 @@ v1.post('/search', async (c) => {
   }
 
   const vectorMatches = await c.env.VECTORIZE.query(queryVector, { topK: 10 });
-  console.log('Vectorize matches:', JSON.stringify(vectorMatches, null, 2));
-  const pasteIds = vectorMatches.matches.map((m: any) => m.id.replace('paste:', ''));
+
+  const scoreMap = new Map<string, number>();
+  const pasteIds = vectorMatches.matches.map((m: any) => {
+    const id = m.id.replace('paste:', '');
+    scoreMap.set(id, m.score);
+    return id;
+  });
 
   if (pasteIds.length === 0) {
     return c.json([]);
@@ -185,7 +190,28 @@ v1.post('/search', async (c) => {
 
   const allowedPastes = pastes.filter(p => !p.owner_email || p.owner_email === userEmail);
 
-  return c.json(allowedPastes);
+  // Re-sort the pastes based on the vector search score
+  const sortedPastes = allowedPastes.sort((a, b) => {
+    const scoreA = scoreMap.get(a.id) ?? 0;
+    const scoreB = scoreMap.get(b.id) ?? 0;
+    return scoreB - scoreA;
+  });
+
+  // Filter pastes based on score
+  if (sortedPastes.length === 0) {
+    return c.json([]);
+  }
+
+  const topScore = scoreMap.get(sortedPastes[0].id) ?? 0;
+  if (topScore < 0.6) {
+    // If the best match is below the threshold, only return that single best match.
+    return c.json([sortedPastes[0]]);
+  }
+
+  // Otherwise, return all matches above the threshold.
+  const filteredPastes = sortedPastes.filter(p => (scoreMap.get(p.id) ?? 0) >= 0.6);
+
+  return c.json(filteredPastes);
 });
 
 // Temporary endpoint to re-index all pastes
