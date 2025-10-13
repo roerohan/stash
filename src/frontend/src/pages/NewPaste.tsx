@@ -7,16 +7,19 @@ import Editor from 'react-simple-code-editor';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.css';
 import { languages, getLanguage } from '../lib/languages';
+import { useAuth } from '../hooks/useAuth';
 
-const createPaste = async (data: { title: string; content: string; language: string }) => {
+const createPaste = async (data: { title: string; content: string; language: string; visibility: 'public' | 'private' }) => {
   const { data: response } = await axios.post('/v1/paste', data);
   return response;
 };
 
 const NewPaste = () => {
+  const { isAuthenticated } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [language, setLanguage] = useState('plaintext');
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const navigate = useNavigate();
 
   const mutation = useMutation({ 
@@ -32,7 +35,8 @@ const NewPaste = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate({ title, content, language });
+    const finalVisibility = isAuthenticated ? visibility : 'public';
+    mutation.mutate({ title, content, language, visibility: finalVisibility });
   };
 
   return (
@@ -65,6 +69,25 @@ const NewPaste = () => {
             ))}
           </select>
         </div>
+
+        {isAuthenticated && (
+          <div>
+            <label htmlFor="visibility" className="block text-sm font-medium text-gray-300">Visibility</label>
+            <select
+              id="visibility"
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as 'public' | 'private')}
+              className="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            >
+              <option value="public">Public</option>
+              <option value="private">Private</option>
+            </select>
+            <p className="mt-2 text-sm text-gray-400">
+              Public pastes are visible to everyone. Private pastes are only visible to you.
+            </p>
+          </div>
+        )}
+
         <div>
           <label htmlFor="content" className="block text-sm font-medium text-gray-300">Content</label>
           <div className="mt-1 block w-full bg-gray-800 border border-gray-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono">

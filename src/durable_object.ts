@@ -7,6 +7,7 @@ export const pasteSchema = z.object({
   title: z.string().optional().default('Untitled'),
   content: z.string().min(1, 'Content cannot be empty'),
   language: z.string().nullable(),
+  visibility: z.enum(['public', 'private']).default('public'),
   created_at: z.number(),
   updated_at: z.number(),
 });
@@ -113,10 +114,12 @@ export class PasteStorage {
       const userPastes = (await this.state.storage.get<string[]>(`user:${newPaste.owner_email}`)) || [];
       userPastes.unshift(id);
       await this.state.storage.put(`user:${newPaste.owner_email}`, userPastes);
-    } else {
+    }
+
+    if (newPaste.visibility === 'public') {
       const publicPastes = (await this.state.storage.get<string[]>('public_pastes')) || [];
       publicPastes.unshift(id);
-      if (publicPastes.length > 100) publicPastes.pop();
+      if (publicPastes.length > 100) publicPastes.pop(); // Keep the list at a reasonable size
       await this.state.storage.put('public_pastes', publicPastes);
     }
     return newPaste;
@@ -157,7 +160,9 @@ export class PasteStorage {
     if (paste.owner_email) {
       const userPastes = (await this.state.storage.get<string[]>(`user:${paste.owner_email}`)) || [];
       await this.state.storage.put(`user:${paste.owner_email}`, userPastes.filter(pId => pId !== id));
-    } else {
+    }
+
+    if (paste.visibility === 'public') {
       const publicPastes = (await this.state.storage.get<string[]>('public_pastes')) || [];
       await this.state.storage.put('public_pastes', publicPastes.filter(pId => pId !== id));
     }

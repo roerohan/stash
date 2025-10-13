@@ -3,6 +3,7 @@ import NewPaste from './pages/NewPaste';
 import ViewPaste from './pages/ViewPaste';
 import Search from './pages/Search';
 import Dashboard from './pages/Dashboard';
+import LoginPage from './pages/LoginPage';
 import Header from './components/Header';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <Route path="/paste/:id" element={<ViewPaste />} />
           <Route path="/search" element={<Search />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/login" element={<LoginPage />} />
         </Routes>
       </main>
     </div>

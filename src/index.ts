@@ -72,15 +72,15 @@ v1.get('/paste/:id', async (c) => {
   }
   const paste = await response.json<Paste>();
 
-  if (paste.owner_email && paste.owner_email !== userEmail) {
+  if (paste.visibility === 'private' && paste.owner_email !== userEmail) {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
   return c.json(paste);
 });
 
-// GET /v1/my-pastes - List user's pastes
-v1.get('/my-pastes', async (c) => {
+// GET /v1/my/pastes - List user's pastes
+v1.get('/my/pastes', async (c) => {
   const userEmail = c.get('userEmail');
   if (!userEmail) {
     return c.json({ error: 'Authentication required' }, 401);
@@ -99,8 +99,8 @@ v1.get('/public-pastes', async (c) => {
   return c.json(pastes);
 });
 
-// PUT /v1/paste/:id - Edit a paste
-v1.put('/paste/:id', zValidator('json', pasteSchema.partial()), async (c) => {
+// PUT /v1/my/paste/:id - Edit a paste
+v1.put('/my/paste/:id', zValidator('json', pasteSchema.partial()), async (c) => {
   const { id } = c.req.param();
   const updates = c.req.valid('json');
   const userEmail = c.get('userEmail');
@@ -128,8 +128,8 @@ v1.put('/paste/:id', zValidator('json', pasteSchema.partial()), async (c) => {
   return c.json(updatedPaste);
 });
 
-// DELETE /v1/paste/:id - Delete a paste
-v1.delete('/paste/:id', async (c) => {
+// DELETE /v1/my/paste/:id - Delete a paste
+v1.delete('/my/paste/:id', async (c) => {
   const { id } = c.req.param();
   const userEmail = c.get('userEmail');
   const pasteStorage = getPasteStorage(c);

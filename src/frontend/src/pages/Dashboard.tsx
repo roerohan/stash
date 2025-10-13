@@ -6,7 +6,7 @@ import { Trash2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 const fetchMyPastes = async () => {
-  const { data } = await axios.get('/v1/my-pastes');
+  const { data } = await axios.get('/v1/my/pastes');
   return data;
 };
 
@@ -16,7 +16,7 @@ const fetchPublicPastes = async () => {
 };
 
 const deletePaste = async (id: string) => {
-    await axios.delete(`/v1/paste/${id}`);
+    await axios.delete(`/v1/my/paste/${id}`);
 };
 
 const Dashboard = () => {

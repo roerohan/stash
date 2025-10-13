@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Code, Home, Search, PlusSquare, Menu, X } from 'lucide-react';
+import { Code, Home, Search, PlusSquare, Menu, X, LogIn, User, LogOut } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   const navLinks = [
     { to: '/', icon: PlusSquare, text: 'New Paste' },
@@ -19,7 +21,7 @@ const Header = () => {
             <Code className="w-6 h-6 text-indigo-400" />
             <span>Stash</span>
           </NavLink>
-          
+
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-4">
             {navLinks.map(link => (
@@ -28,6 +30,26 @@ const Header = () => {
               </NavLink>
             ))}
           </nav>
+
+          <div className="hidden lg:flex items-center">
+            {isLoading ? (
+              <div className="w-8 h-8 bg-gray-700 rounded-full animate-pulse"></div>
+            ) : isAuthenticated && user ? (
+              <div className="flex items-center space-x-4 text-gray-300">
+                <div className="flex items-center space-x-2">
+                  <User className="w-5 h-5" />
+                  <span className="text-sm font-medium">{user.email}</span>
+                </div>
+                <a href="/cdn-cgi/access/logout" className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white" title="Logout">
+                  <LogOut className="w-4 h-4" />
+                </a>
+              </div>
+            ) : (
+              <a href="/login" className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white">
+                <LogIn className="w-4 h-4 mr-2" /> Login
+              </a>
+            )}
+          </div>
 
           {/* Mobile Menu Button */}
           <div className="lg:hidden">
@@ -55,6 +77,30 @@ const Header = () => {
                 </div>
               </NavLink>
             ))}
+            <div className="border-t border-gray-700 pt-4 mt-4">
+              {isLoading ? (
+                <div className="flex items-center px-3 py-2">
+                  <div className="w-8 h-8 bg-gray-700 rounded-full animate-pulse"></div>
+                </div>
+              ) : isAuthenticated && user ? (
+                <div className="flex items-center justify-between px-3 py-2 text-base font-medium text-white">
+                  <div className="flex items-center">
+                    <User className="w-5 h-5 mr-3" />
+                    <span>{user.email}</span>
+                  </div>
+                  <a href="/cdn-cgi/access/logout" onClick={() => setIsMenuOpen(false)} className="p-2 rounded-md text-gray-300 hover:bg-gray-700 hover:text-white" title="Logout">
+                    <LogOut className="w-5 h-5" />
+                  </a>
+                </div>
+              ) : (
+                <a href="/login" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-gray-700 hover:text-white">
+                  <div className="flex items-center">
+                    <LogIn className="w-5 h-5 mr-3" />
+                    <span>Login</span>
+                  </div>
+                </a>
+              )}
+            </div>
           </nav>
         </div>
       )}
