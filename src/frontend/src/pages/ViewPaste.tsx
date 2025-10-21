@@ -33,7 +33,7 @@ const ViewPaste = () => {
     <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-2 text-white">{paste.title || 'Untitled Paste'}</h1>
         <div className="text-sm text-gray-400 mb-4">
-            Language: {paste.language || 'plaintext'} | Posted: {new Date(paste.created_at).toLocaleString()}
+            Language: {paste.language || 'plaintext'} | Visibility: {paste.visibility.charAt(0).toUpperCase() + paste.visibility.slice(1)} | Posted: {new Date(paste.created_at).toLocaleString()}
         </div>
         <div className="bg-gray-800 rounded-lg overflow-x-auto">
             <pre className="p-4"><code ref={codeRef} className={`language-${paste.language}`}>
