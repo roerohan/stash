@@ -11,9 +11,7 @@ Stash is a pastebin application running entirely on Cloudflare Workers, using Du
 
 ## One-Click Deploy
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/YOUR_USERNAME/YOUR_REPO_NAME)
-
-*Note: Replace the URL with your actual repository URL after you've pushed the code to GitHub.*
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/roerohan/stash)
 
 ## Usage Instructions
 
