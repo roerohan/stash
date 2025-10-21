@@ -8,14 +8,14 @@ type App = {
   Bindings: Env;
   Variables: {
     userEmail: string | null;
-    pasteStorage: DurableObjectStub;
+    pasteStorage: DurableObjectStub<PasteStorage>;
   };
 };
 
 const app = new Hono<App>();
 
 // Helper to get the DO stub
-function getPasteStorage(c: Context<App>): DurableObjectStub {
+function getPasteStorage(c: Context<App>): DurableObjectStub<PasteStorage> {
     // Use a single, well-known DO instance for all pastes
     const id = c.env.PASTE_STORAGE.idFromName('global-paste-storage');
     return c.env.PASTE_STORAGE.get(id);
@@ -47,12 +47,7 @@ v1.post(
     const userEmail = c.get('userEmail');
     const pasteStorage = getPasteStorage(c);
 
-    const response = await pasteStorage.fetch('http://do/create', {
-      method: 'POST',
-      body: JSON.stringify({ ...pasteData, owner_email: userEmail }),
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const newPaste = await response.json<Paste>();
+    const newPaste = await pasteStorage.createPaste({ ...pasteData, owner_email: userEmail });
 
     c.executionCtx.waitUntil(vectorizePaste(c.env, newPaste));
 
@@ -66,11 +61,10 @@ v1.get('/paste/:id', async (c) => {
   const userEmail = c.get('userEmail');
   const pasteStorage = getPasteStorage(c);
 
-  const response = await pasteStorage.fetch(`http://do/paste/${id}`);
-  if (!response.ok) {
+  const paste = await pasteStorage.getPaste(id);
+  if (!paste) {
     return c.json({ error: 'Paste not found' }, 404);
   }
-  const paste = await response.json<Paste>();
 
   if (paste.visibility === 'private' && paste.owner_email !== userEmail) {
     return c.json({ error: 'Forbidden' }, 403);
@@ -86,16 +80,14 @@ v1.get('/my/pastes', async (c) => {
     return c.json({ error: 'Authentication required' }, 401);
   }
   const pasteStorage = getPasteStorage(c);
-  const response = await pasteStorage.fetch(`http://do/user-pastes/${userEmail}`);
-  const pastes = await response.json<Paste[]>();
+  const pastes = await pasteStorage.listUserPastes(userEmail);
   return c.json(pastes);
 });
 
 // GET /v1/public-pastes - List recent public pastes
 v1.get('/public-pastes', async (c) => {
   const pasteStorage = getPasteStorage(c);
-  const response = await pasteStorage.fetch('http://do/public-pastes');
-  const pastes = await response.json<Paste[]>();
+  const pastes = await pasteStorage.listPublicPastes();
   return c.json(pastes);
 });
 
@@ -106,22 +98,16 @@ v1.put('/my/paste/:id', zValidator('json', pasteSchema.partial()), async (c) => 
   const userEmail = c.get('userEmail');
   const pasteStorage = getPasteStorage(c);
 
-  const getResponse = await pasteStorage.fetch(`http://do/paste/${id}`);
-  if (!getResponse.ok) {
+  const currentPaste = await pasteStorage.getPaste(id);
+  if (!currentPaste) {
     return c.json({ error: 'Paste not found' }, 404);
   }
-  const currentPaste = await getResponse.json<Paste>();
 
-  if (!currentPaste.owner_email || currentPaste.owner_email !== userEmail) {
+  if (currentPaste.owner_email !== userEmail) {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
-  const updateResponse = await pasteStorage.fetch(`http://do/paste/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(updates),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  const updatedPaste = await updateResponse.json<Paste>();
+  const updatedPaste = await pasteStorage.updatePaste(id, updates);
 
   c.executionCtx.waitUntil(vectorizePaste(c.env, updatedPaste));
 
@@ -134,17 +120,17 @@ v1.delete('/my/paste/:id', async (c) => {
   const userEmail = c.get('userEmail');
   const pasteStorage = getPasteStorage(c);
 
-  const getResponse = await pasteStorage.fetch(`http://do/paste/${id}`);
-  if (!getResponse.ok) {
-    return c.json({ error: 'Paste not found' }, 404);
+  const currentPaste = await pasteStorage.getPaste(id);
+  if (!currentPaste) {
+    // If the paste doesn't exist, we can consider the delete successful.
+    return new Response(null, { status: 204 });
   }
-  const currentPaste = await getResponse.json<Paste>();
 
-  if (!currentPaste.owner_email || currentPaste.owner_email !== userEmail) {
+  if (currentPaste.owner_email !== userEmail) {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
-  await pasteStorage.fetch(`http://do/paste/${id}`, { method: 'DELETE' });
+  await pasteStorage.deletePaste(id);
 
   c.executionCtx.waitUntil(c.env.VECTORIZE.deleteByIds([`paste:${id}`]));
 
@@ -181,17 +167,12 @@ v1.post('/search', async (c) => {
   }
 
   const pasteStorage = getPasteStorage(c);
-  const response = await pasteStorage.fetch('http://do/get-multiple', {
-    method: 'POST',
-    body: JSON.stringify({ ids: pasteIds }),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  const pastes = await response.json<Paste[]>();
+  const pastes = await pasteStorage.getMultiplePastes(pasteIds);
 
-  const allowedPastes = pastes.filter(p => !p.owner_email || p.owner_email === userEmail);
+  const allowedPastes = pastes.filter((p: Paste) => p.visibility === 'public' || p.owner_email === userEmail);
 
   // Re-sort the pastes based on the vector search score
-  const sortedPastes = allowedPastes.sort((a, b) => {
+  const sortedPastes = allowedPastes.sort((a: Paste, b: Paste) => {
     const scoreA = scoreMap.get(a.id) ?? 0;
     const scoreB = scoreMap.get(b.id) ?? 0;
     return scoreB - scoreA;
@@ -209,7 +190,7 @@ v1.post('/search', async (c) => {
   }
 
   // Otherwise, return all matches above the threshold.
-  const filteredPastes = sortedPastes.filter(p => (scoreMap.get(p.id) ?? 0) >= 0.6);
+  const filteredPastes = sortedPastes.filter((p: Paste) => (scoreMap.get(p.id) ?? 0) >= 0.6);
 
   return c.json(filteredPastes);
 });
@@ -217,13 +198,9 @@ v1.post('/search', async (c) => {
 // Temporary endpoint to re-index all pastes
 v1.post('/reindex-all', async (c) => {
   const pasteStorage = getPasteStorage(c);
-  const response = await pasteStorage.fetch('http://do/list-all');
-  if (!response.ok) {
-    return c.json({ error: 'Failed to fetch pastes from Durable Object' }, 500);
-  }
-  const pastes = await response.json<Paste[]>();
+  const pastes = await pasteStorage.listAllPastes();
 
-  const vectorizationPromises = pastes.map(paste => vectorizePaste(c.env, paste));
+  const vectorizationPromises = pastes.map((paste: Paste) => vectorizePaste(c.env, paste));
   c.executionCtx.waitUntil(Promise.all(vectorizationPromises));
 
   return c.json({
