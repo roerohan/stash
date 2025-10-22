@@ -2,6 +2,10 @@
 
 Stash is a pastebin application running entirely on Cloudflare Workers, using Durable Objects for storage and Vectorize for semantic search.
 
+## Motivation
+
+I often find myself needing to share code snippets, but I'm hesitant to use public pastebins because I have to meticulously redact API keys and other sensitive information. So I made one for myself...
+
 ## Features
 
 - **Public & Private Pastes**: Works in public mode by default. Can be configured for private pastes tied to Google accounts.
@@ -12,6 +16,13 @@ Stash is a pastebin application running entirely on Cloudflare Workers, using Du
 ## One-Click Deploy
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/roerohan/stash)
+
+## Architecture
+
+This tool runs on Cloudflare's serverless platform (Workers, Durable Objects, etc.) instead of a traditional server and database. This provides:
+
+- **Global Low-Latency**: Fast access from anywhere in the world.
+- **Simplified Infrastructure**: No servers or databases for you to manage.
 
 ## Usage Instructions
 
