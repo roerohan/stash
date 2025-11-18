@@ -41,12 +41,31 @@ export class PasteStorage extends DurableObject {
     const newPaste: Paste = { id, ...data, created_at: now, updated_at: now };
     pasteSchema.parse(newPaste);
 
+    console.log('CreatePaste in DO:', {
+      id,
+      owner_email: newPaste.owner_email,
+      visibility: newPaste.visibility,
+      hasOwner: !!newPaste.owner_email
+    });
+
     await this.storage.put(`paste:${id}`, newPaste);
 
     if (newPaste.owner_email) {
       const userPastes = (await this.storage.get<string[]>(`user:${newPaste.owner_email}`)) || [];
+      console.log('Before adding to user list:', {
+        email: newPaste.owner_email,
+        existingCount: userPastes.length,
+        existingIds: userPastes
+      });
       userPastes.unshift(id);
       await this.storage.put(`user:${newPaste.owner_email}`, userPastes);
+      console.log('After adding to user list:', {
+        email: newPaste.owner_email,
+        newCount: userPastes.length,
+        addedId: id
+      });
+    } else {
+      console.log('Paste created without owner_email - will not be added to user list');
     }
 
     if (newPaste.visibility === 'public') {
@@ -77,6 +96,22 @@ export class PasteStorage extends DurableObject {
     pasteSchema.parse(updatedPaste);
 
     await this.storage.put(`paste:${id}`, updatedPaste);
+
+    // Handle visibility changes for public_pastes list
+    if (currentPaste.visibility !== updatedPaste.visibility) {
+      const publicPastes = (await this.storage.get<string[]>('public_pastes')) || [];
+
+      if (updatedPaste.visibility === 'public' && !publicPastes.includes(id)) {
+        // Changed from private to public - add to public list
+        publicPastes.unshift(id);
+        if (publicPastes.length > 100) publicPastes.pop();
+        await this.storage.put('public_pastes', publicPastes);
+      } else if (updatedPaste.visibility === 'private' && publicPastes.includes(id)) {
+        // Changed from public to private - remove from public list
+        await this.storage.put('public_pastes', publicPastes.filter(pId => pId !== id));
+      }
+    }
+
     return updatedPaste;
   }
 
@@ -104,7 +139,18 @@ export class PasteStorage extends DurableObject {
 
   async listUserPastes(email: string): Promise<Paste[]> {
     const pasteIds = (await this.storage.get<string[]>(`user:${email}`)) || [];
-    return this.getMultiplePastes(pasteIds);
+    console.log('ListUserPastes in DO:', {
+      email,
+      storedIds: pasteIds,
+      count: pasteIds.length
+    });
+    const pastes = await this.getMultiplePastes(pasteIds);
+    console.log('Retrieved pastes:', {
+      email,
+      retrievedCount: pastes.length,
+      pastes: pastes.map(p => ({ id: p.id, visibility: p.visibility, owner: p.owner_email }))
+    });
+    return pastes;
   }
 
   async listPublicPastes(): Promise<Paste[]> {

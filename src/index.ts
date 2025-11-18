@@ -31,6 +31,14 @@ app.use('/v1/*', async (c, next) => {
     userEmail = 'dev-user@example.com'; // Mock user for local development
   }
 
+  // Log authentication for debugging
+  console.log('Authentication check:', {
+    userEmail,
+    hasAuthHeader: !!c.req.header('cf-access-authenticated-user-email'),
+    isDevelopment,
+    path: c.req.path
+  });
+
   c.set('userEmail', userEmail);
   await next();
 });
@@ -47,7 +55,20 @@ v1.post(
     const userEmail = c.get('userEmail');
     const pasteStorage = getPasteStorage(c);
 
+    console.log('Creating paste:', {
+      title: pasteData.title,
+      visibility: pasteData.visibility,
+      userEmail,
+      hasOwner: !!userEmail
+    });
+
     const newPaste = await pasteStorage.createPaste({ ...pasteData, owner_email: userEmail });
+
+    console.log('Paste created:', {
+      id: newPaste.id,
+      owner_email: newPaste.owner_email,
+      visibility: newPaste.visibility
+    });
 
     c.executionCtx.waitUntil(vectorizePaste(c.env, newPaste));
 
@@ -79,8 +100,19 @@ v1.get('/my/pastes', async (c) => {
   if (!userEmail) {
     return c.json({ error: 'Authentication required' }, 401);
   }
+
+  console.log('Fetching pastes for user:', userEmail);
+
   const pasteStorage = getPasteStorage(c);
   const pastes = await pasteStorage.listUserPastes(userEmail);
+
+  console.log('User pastes found:', {
+    userEmail,
+    count: pastes.length,
+    pasteIds: pastes.map(p => p.id),
+    visibilities: pastes.map(p => ({ id: p.id, visibility: p.visibility }))
+  });
+
   return c.json(pastes);
 });
 
@@ -261,6 +293,7 @@ async function vectorizePaste(env: Env, paste: Paste) {
             ...(paste.owner_email && { owner: paste.owner_email }),
             ...(paste.title && { title: paste.title }),
             ...(paste.language && { language: paste.language }),
+            visibility: paste.visibility,
           },
         },
       ]);
